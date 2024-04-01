@@ -39,13 +39,14 @@ def get_str_by_index(index):
 
     inst = data_listed[index]
     denulled = [inst[x] for x in range(0, 3)]
+    bd = []
     birthDayCorrect = True
     for x in range(3, 6):
         if inst[x] == 'None':
-            birthDayCorrect = False
-            birthDayCorrect = True
-    if birthDayCorrect:
-        denulled += ['.'.join(str(inst[x]) for x in range(3, 6))]
+            bd.append('?')
+        else:
+            bd.append(inst[x])
+    denulled += ['.'.join(str(x) for x in bd)]
     denulled += ['Номера:']
     numbers_count = len(inst[6])
     denulled += [', '.join(str(x) for x in inst[6])]
@@ -204,6 +205,10 @@ while True:
             help_add()
         if header == "-print" or header == "-p":
             help_print()
+        if header == "-delete" or header == "-d":
+            help_delete()
+        if header == "-change" or header == "-ch":
+            help_change()
         continue
     if header == "add" or header == "a":
         cancel = False
