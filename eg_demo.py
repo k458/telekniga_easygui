@@ -1,0 +1,3 @@
+import easygui
+
+easygui.egdemo()

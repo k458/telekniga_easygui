@@ -1,4 +1,5 @@
-# create data if not exists   afonov afonya beregobas 22 12 1998 3 008 009 0019
+import easygui as eg
+
 data = open('data.csv', 'a')
 data.close()
 data = open('data.csv', 'r')
@@ -29,18 +30,17 @@ def save_data_listed_as_data():
         data.writelines(line)
         data.writelines('\n')
     data.close()
-    print('Сохранено.\n')
+    # print('Сохранено.\n')
 
 
 # get str
 def get_str_by_index(index):
     # original = [str(x) for x in data_listed[index]]
     # print(f'original {str(original)}')
-
+    index = int(index)
     inst = data_listed[index]
     denulled = [inst[x] for x in range(0, 3)]
     bd = []
-    birthDayCorrect = True
     for x in range(3, 6):
         if inst[x] == 'None':
             bd.append('?')
@@ -57,46 +57,38 @@ def get_str_by_index(index):
     return ' '.join(str(elem) for elem in ret)
 
 
-# help
-def help_main():
-    print('Программа парсит данные из файла, затем работает с данными, а не с файлом, поэтому не забывайте сохраняться!')
-    print('clear, c - очистить консоль')
-    print('save, s - сохранить')
-    print('quit, q - выход из программы')
-    print('add, a - добавить новую запись(подробнее - help -add)')
-    print('print, p - вывести данные(подробнее - help -print)')
-    print('delete, d - удалить данные(подробнее - help -delete)')
-    print('change, ch - изменить данные(подробнее - help -change)')
-def help_add():
-    print('Для добавления новой записи используйте команду вида: ')
-    print('add ИМЯ ФАМИЛИЯ ОТЧЕСТВО ДД.ММ.ГГГГ -t НОМЕР1 НОМЕР2 НОМЕР3')
-    print('Если вы не знаете ФИО полностью или дату, вводите None вместо неизвестных. Номер должен быть хотя бы один.')
-    print('Если указать индекс и номер телефона, можно добавлять номера:')
-    print('add -i ИНДЕКС -t НОМЕР')
-def help_print():
-    print('Для вывода данных используйте команду вида: ')
-    print('print -i ИНДЕКС чтобы вывести данные по нужному индексу')
-    print('либо, например print -n ИМЯ чтобы вывести данные отфильтрованные по имени. Фильтровать можно также по фамилии(-s), отчеству(-o).')
-    print('Флаги можно комбинировать. После каждого флага нужно вводить и соотвутствующее значение.')
-def help_delete():
-    print('Для удаления записи используйте команду вида: ')
-    print('delete -i ИНДЕКС чтобы удалить данные по нужному индексу')
-    print('либо delete -i ИНДЕКС -t ИНДЕКС_НОМЕРА чтобы удалить номер телефона')
-def help_change():
-    print('Для изменения данных используйте команду вида: ')
-    print('change -i ИНДЕКС -n ИМЯ чтобы изменить имя в данных по нужному индексу')
-    print('Изменять можно также по фамилии(-s), отчеству(-o), дате рождения(-bd)')
-    print('Флаги можно комбинировать. После каждого флага нужно вводить и соотвутствующее значение.')
+def to_add_format(to_add, add_missing = True):
+    for i in range(0, len(to_add)):
+        if to_add[i].count(' ') > 0:
+            to_add[i] = to_add[i].replace(' ', '')
+        if len(to_add[i]) == 0:
+            to_add[i] = None
+    if len(to_add) > 3:
+        if to_add[3] != None:
+            to_add[3] = to_add[3].split('.')
+            while len(to_add[3]) < 3:
+                to_add[3].append('?')
+        elif add_missing:
+            to_add[3] = ['?', '?', '?']
+    if len(to_add) > 4:        
+        if to_add[4] != None and type(to_add[4]) is list:
+            to_add[4] = to_add[4].split(',')
+    return to_add
 
 
-# print
+# find
 def print_all():
     max = len(data_listed)
     for index in range(0, max):
         print(get_str_by_index(index))
 def print_by_index(index):
     print(get_str_by_index(index))
-def print_by_filter(surname = None, name = None, otch = None, birth = None, number = None):
+def list_by_filter(forma):
+    surname = forma[0]
+    name = forma[1]
+    otch = forma[2]
+    birth = forma[3]
+    number = forma[4]
     found = []
     for index in range(0, len(data_listed)):
         inst = data_listed[index]
@@ -106,317 +98,173 @@ def print_by_filter(surname = None, name = None, otch = None, birth = None, numb
             continue
         if otch != None and inst[2].lower() != otch.lower():
             continue
-        #if birth != None:
-        #if number != None:
+        if birth != None:
+            if birth[0] != 'None' and birth[0] != '?':
+                if birth[0] != inst[3]:
+                    continue
+            if birth[1] != 'None' and birth[1] != '?':
+                if birth[1] != inst[4]:
+                    continue
+            if birth[2] != 'None' and birth[2] != '?':
+                if birth[2] != inst[5]:
+                    continue
+        if number != None:
+            found_number = False
+            for x in inst[6]:
+                if number == x:
+                    found_number = True
+                    break
+            if not found_number:
+                continue
         found.append(index) 
-    if len(found) == 0:
-        print(f'Не найдено записей.')
-    else:
-        print(f'Найдено записей: {len(found)}')
-        for elem in found:
-            print_by_index(int(elem))
+    return found
 
 
 # change
-def change_by_index(index = None, surname = None, name = None, otch = None, birthDay = None):
-    to_change = data_listed[index]
-    str_old = get_str_by_index(index)
+def change_by_index_msg(index):
+    index = int(index)
+    msg = get_str_by_index(index)
+    title = "title"
+    choices = ['Изменить основные данные','Изменить номера телефонов', 'Удалить запись']
+    change_or_delete = eg.choicebox(msg, title, choices)
+    if change_or_delete == 'Изменить основные данные':
+        msg =f"Заполните поля. Дату рождения нужно указывать в формате ДД.ММ.ГГГГ. Вместо неизвестных вводите ?.\n{get_str_by_index(index)}"
+        title = "title"
+        fields = ['Фамилия:', 'Имя:', 'Отчество:','Дата рождения:']
+        values = []
+        forma = eg.multenterbox(msg, title, fields, values)
+        forma = to_add_format(forma, False)
+        invalid_person = True
+        for i in range(0,len(forma)):
+            if forma[i] != None:
+                invalid_person = False
+        if not invalid_person:
+            change_by_index_data(index, forma)
+        else:
+            eg.msgbox("Неизвестная ошибка!")
+    elif change_or_delete == 'Изменить номера телефонов':
+        nums = [x for x in data_listed[index][6]]
+        for i in range(0, len(nums)):
+            nums[i] = f'{i}. {nums[i]}'
+        msg ="Выберите номер."
+        title = "title"
+        choices = ['Добавить'] + nums
+        chosen = eg.choicebox(msg, title, choices)
+        if chosen == 'Добавить':
+            msg =f"Добавляем номер..."
+            title = "title"
+            num_new = eg.enterbox(msg, title)
+            data_listed[index][6].append(num_new)
+        else:
+            num_index = int(chosen.split('.')[0])
+            msg ="Что с ним делать?."
+            title = "title"
+            choices = ['Изменить', 'Удалить']
+            choice = eg.choicebox(msg, title, choices)
+            if choice == 'Изменить':
+                msg =f"Заменяем номер {data_listed[index][6][num_index]} на..."
+                title = "title"
+                num_new = eg.enterbox(msg, title)
+                data_listed[index][6][num_index] = num_new
+            elif choice == 'Удалить':
+                data_listed[index][6].pop(num_index)   
+    elif change_or_delete == 'Удалить запись':
+        data_listed.remove(data_listed[index])
+def change_by_index_data(index, forma):
+    index = int(index)
+    inst = data_listed[index]
+    surname = forma[0]
+    name = forma[1]
+    otch = forma[2]
+    birth = forma[3]
     if surname != None:
-        to_change[0] = surname
+        inst[0] = surname
     if name != None:
-        to_change[1] = name
+        inst[1] = name
     if otch != None:
-        to_change[2] = otch
-    if birthDay != None:
-        to_change[3] = birthDay[0]
-        to_change[4] = birthDay[1]
-        to_change[5] = birthDay[2]
-    print('Изменена запись:')
-    print(str_old)
-    print('на:')
-    print(get_str_by_index(index))
+        inst[2] = otch
+    if birth != None:
+        inst[3] = birth[0]
+        inst[4] = birth[1]
+        inst[5] = birth[2]
 
 
 # add
-def add_listed(person, telefons):
-    person.append(telefons)
-    data_listed.append(person)
-    print(f'Добавлена запись: {get_str_by_index(len(data_listed) - 1)}\n')
-def add_by_index(index = None, telefons = None, telefons_comments = None, emails = None, emails_comments = None):
-    if index == None:
-        return
-    inst = data_listed[index]
-    telefons_combined = []
-    telefons_combined += inst[6]
-    telefons_combined += telefons
-    telefons_combined = set(telefons_combined)
-    inst[6] = list(telefons_combined)
-    print(f'Добавлены данные в запись: {get_str_by_index(index)}\n')
-        
-
-
-# del
-def del_by_index(index):
-    if index < 0 or index > len(data_listed) - 1:
-        print('Такой записи не существует.')
-        return
-    print(f'Удалена запись: {get_str_by_index(index)}')
-    data_listed.pop(index)
-def del_t_by_index(index, t_index):
-    if index < 0 or index > len(data_listed) - 1:
-        print('Такой записи не существует.')
-        return
-    inst = data_listed[index]
-    tels = inst[6]
-    if t_index >= len(tels) or t_index < 0:
-        print('Такого номера не существует.')
-        return
-    tels.remove(tels[t_index])
-    print('Номер удален.')
-
-
+def add_listed(to_add):
+    date = to_add[3]
+    to_add[3] = date[0]
+    to_add.insert(4, date[2])
+    to_add.insert(4, date[1])
+    data_listed.append(to_add)
+    # print(f'Добавлена запись: {get_str_by_index(len(data_listed) - 1)}\n')
 
 while True:
-    s = str(input())
-    # s = s.lower()
-    s = s.strip('  ')
-    # one word commands
-    if s == 'clear' or s == 'c':
-        print("\033[H\033[J", end="")
-        continue
-    if s == 'help' or s == 'h':
-        help_main()
-        continue
-    if s == 'quit' or s == 'q':
-        data.close()
+    find_or_add = None
+    if True:
+        msg ="Чтобы изменить существующую запись, ее сперва нужно найти."
+        title = "title"
+        choices = ["Найти", "Добавить"]
+        find_or_add = eg.choicebox(msg, title, choices)
+    if find_or_add == None:
         break
-    if s == 'save' or s == 's':
-        save_data_listed_as_data()
-        continue
-    if s == 'print' or s == 'p':
-        print_all()
-        continue
-    # combined commands
-    s_list = s.split()
-    header = s_list.pop(0)
-    if header == 'help' or header == 'h':
-        header = s_list.pop(0)
-        if header == "-add" or header == "-a":
-            help_add()
-        if header == "-print" or header == "-p":
-            help_print()
-        if header == "-delete" or header == "-d":
-            help_delete()
-        if header == "-change" or header == "-ch":
-            help_change()
-        continue
-    if header == "add" or header == "a":
-        cancel = False
-        index = None
-        person = []
-        birthDay = []
-        telefons = []
-        stacking = 'person'
-        while len(s_list) > 0:
-            header = s_list[0]
-            if header == "-index" or header == "-i":
-                stacking = None
-                s_list.pop(0)
-                if len(s_list) > 0:
-                    index = int(s_list.pop(0))
-                else:
-                    print('Ошибка - после флага -i нужно указать индекс!')
-                    cancel = True
-                continue
-            if header == "-telefons" or header == "-t":
-                s_list.pop(0)
-                if len(s_list) > 0:
-                    stacking = 'telefons'
-                else:
-                    print('Ошибка - после флага -t нужно указать номер телефона!')
-                    cancel = True
-                continue
-            if stacking == 'telefons':
-                telefons.append(header)
-                s_list.pop(0)
-                continue
-            if stacking == 'person':
-                if len(person) < 3:
-                    person.append(header)
-                    s_list.pop(0)
-                else:
-                    birthDay = s_list.pop(0)
-                    birthDay = birthDay.split('.')
-                    if len(birthDay) < 3 and len(birthDay) > 0:
-                        print('Ошибка - неверный формат даты рождения!')
-                        cancel = True
-        if len(s_list) > 0 and index != None:
-            print('Ошибка - лишние данные в запросе.')
-            cancel = True
-        if not cancel:
-            if index != None:
-                if index < 0 or index > len(data_listed) - 1:
-                    print('Ошибка - неверный индекс.')
-                else:
-                    add_by_index(index, telefons)
+    elif find_or_add == 'Добавить':
+        forma = []
+        if True:
+            msg ="Заполните поля. Дату рождения нужно указывать в формате ДД.ММ.ГГГГ. Вместо неизвестных вводите ?. Если номеров несколько, укажите их через запятую."
+            title = "title"
+            fields = ['Фамилия:', 'Имя:', 'Отчество:','Дата рождения:','Номера телефонов:']
+            values = []
+            forma = eg.multenterbox(msg, title, fields, values)
+            forma = to_add_format(forma)
+            invalid_person = True
+            for i in range(0,len(forma)):
+                if forma[i] != None:
+                    invalid_person = False
+            if not invalid_person:
+                add_listed(forma)
             else:
-                if len(birthDay) == 0:
-                    birthDay = ['None', 'None', 'None']
-                person += birthDay
-                if len(telefons) < 1:
-                    print('Нужен хотя-бы один номер!')
-                elif len(person) < 6:
-                    print('Недостаточно вводных данных!')
-                else:
-                    add_listed(person, telefons)
-        continue
-    if header == 'delete' or header == 'd':
-        cancel = False
-        index = None
-        t_index = None
-        while len(s_list) > 0:
-            header = s_list[0]
-            if header == "-index" or header == "-i":
-                s_list.pop(0)
-                if len(s_list) > 0:
-                    index = int(s_list.pop(0))
-                else:
-                    print('Ошибка - после флага -i нужно указать индекс!')
-                    cancel = True
-                continue
-            if header == "-tel" or header == "-t":
-                s_list.pop(0)
-                if len(s_list) > 0:
-                    t_index = int(s_list.pop(0))
-                else:
-                    print('Ошибка - после флага -t нужно указать индекс номера телефона!')
-                    cancel = True
-                continue
-            break
-        if len(s_list) > 0:
-            print('Ошибка - лишние данные в запросе.')
-            cancel = True
-        if not cancel:
-            if index == None or index < 0 or index > len(data_listed) - 1:
-                print('Ошибка - неверный индекс.')
+                eg.msgbox("Нельзя добавить пустую запись!")
+    elif find_or_add == 'Найти':
+        msg ="Можно найти запись по индексу, либо по другим данным."
+        title = "title"
+        choices = ["По индексу", "По другим данным"]
+        index_or_data = eg.choicebox(msg, title, choices)
+        if index_or_data == 'По индексу':
+            msg = "Введите индекс."
+            title = "title"
+            index = eg.integerbox(msg, title)
+            if index < 0:
+                eg.msgbox("Индекс должен быть больше нуля!")
+            elif index > len(data_listed) - 1:
+                eg.msgbox("Нет такой записи!")
             else:
-                if t_index != None:
-                    del_t_by_index(index, t_index)
+                change_by_index_msg(index)
+        elif index_or_data == 'По другим данным':
+            forma = []
+            msg ="Заполните поля, по которым будет вестись поиск, ненужные поля оставьте пустыми. Дату рождения нужно указывать в формате ДД.ММ.ГГГГ. Вместо неизвестных вводите ?."
+            title = "title"
+            fields = ['Фамилия:', 'Имя:', 'Отчество:','Дата рождения:', 'Номер телефона:']
+            values = []
+            forma = eg.multenterbox(msg, title, fields, values)
+            forma = to_add_format(forma, False)
+            invalid_person = True
+            for i in range(0,len(forma)):
+                if forma[i] != None:
+                    invalid_person = False
+            if not invalid_person:
+                found_list = list_by_filter(forma)
+                if len(found_list) == 0:
+                    eg.msgbox("Не найдено записей...")
+                elif len(found_list) == 1:
+                    change_by_index_msg(found_list[0])
                 else:
-                    del_by_index(index)
-        continue
-    if header == "print" or header == "p":
-        cancel_print = False
-        index = None
-        surname = None
-        name = None
-        otch = None
-        while len(s_list) > 0:
-            header = s_list[0]
-            if header == "-index" or header == "-i":
-                s_list.pop(0)
-                if len(s_list) > 0:
-                    index = int(s_list.pop(0))
-                else:
-                    print('Ошибка - после флага -i нужно указать индекс!')
-                    cancel_print = True
-                continue
-            if header == "-surname" or header == "-s":
-                s_list.pop(0)
-                if len(s_list) > 0:
-                    surname = s_list.pop(0)
-                else:
-                    print('Ошибка - после флага -s нужно указать фамилию!')
-                    cancel_print = True
-                continue
-            if header == "-name" or header == "-n":
-                s_list.pop(0)
-                if len(s_list) > 0:
-                    name = s_list.pop(0)
-                else:
-                    print('Ошибка - после флага -n нужно указать имя!')
-                    cancel_print = True
-                continue
-            if header == "-otch" or header == "-o":
-                s_list.pop(0)
-                if len(s_list) > 0:
-                    otch = s_list.pop(0)
-                else:
-                    print('Ошибка - после флага -o нужно указать отчество!')
-                    cancel_print = True
-                continue
-            break
-        if len(s_list) > 0:
-            print('Ошибка - лишние данные в запросе.')
-            cancel_print = True
-        if index != None:
-            if index < 0 or index > len(data_listed) - 1:
-                print('Ошибка - неверный индекс.')     
+                    msg ="Выберите запись."
+                    title = "title"
+                    choices = [get_str_by_index(x) for x in found_list]
+                    chosen = eg.choicebox(msg, title, choices)
+                    index = chosen.split('.')[0]
+                    change_by_index_msg(index)
             else:
-                print_by_index(index)
-        elif not cancel_print:
-            print_by_filter(surname, name, otch)
-        continue
-    if header == "change" or header == "ch":
-        cancel = False
-        index = None
-        surname = None
-        name = None
-        otch = None
-        birthDay = None
-        while len(s_list) > 0:
-            header = s_list[0]
-            if header == "-index" or header == "-i":
-                s_list.pop(0)
-                if len(s_list) > 0:
-                    index = int(s_list.pop(0))
-                else:
-                    print('Ошибка - после флага -i нужно указать индекс!')
-                    cancel = True
-                continue
-            if header == "-surname" or header == "-s":
-                s_list.pop(0)
-                if len(s_list) > 0:
-                    surname = s_list.pop(0)
-                else:
-                    print('Ошибка - после флага -s нужно указать фамилию!')
-                    cancel = True
-                continue
-            if header == "-name" or header == "-n":
-                s_list.pop(0)
-                if len(s_list) > 0:
-                    name = s_list.pop(0)
-                else:
-                    print('Ошибка - после флага -n нужно указать имя!')
-                    cancel = True
-                continue
-            if header == "-otch" or header == "-o":
-                s_list.pop(0)
-                if len(s_list) > 0:
-                    otch = s_list.pop(0)
-                else:
-                    print('Ошибка - после флага -o нужно указать отчество!')
-                    cancel = True
-                continue
-            if header == "-birthday" or header == "-bd":
-                s_list.pop(0)
-                if len(s_list) > 0:
-                    birthDay = s_list.pop(0)
-                    birthDay = birthDay.split('.')
-                    if len(birthDay) < 3:
-                        print('Ошибка - неверный формат даты рождения!')
-                        cancel = True
-                else:
-                    print('Ошибка - после флага -d нужно указать дату!')
-                    cancel = True
-                continue
-            break
-        if len(s_list) > 0:
-            print('Ошибка - лишние данные в запросе.')
-            cancel = True
-        if index == None or index < 0 or index > len(data_listed) - 1:
-            print('Ошибка - неверный индекс.')
-            cancel = True
-        if not cancel:
-            change_by_index(index, surname, name, otch, birthDay)
-        continue
+                eg.msgbox("Нельзя искать пустую запись!")
+    save_data_listed_as_data()
+
